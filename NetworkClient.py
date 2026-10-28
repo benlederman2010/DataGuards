@@ -17,7 +17,7 @@ class NetworkClient:
 
             Protocol.send(self.client_socket, user_message)
 
-            reply = protocol.receive(self.client_socket)
+            reply = Protocol.receive(self.client_socket)
             if reply is not None:
                 print(reply)
 
