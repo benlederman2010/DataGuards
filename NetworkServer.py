@@ -41,8 +41,10 @@ class NetworkServer:
             Protocol.send(client_socket, error_msg)
         finally:
             client_socket.close()
+            print("Server shutdown.")
 
-    def __process(self, msg: ProtocolMessage) -> ProtocolMessage:
+    @staticmethod
+    def __process(msg: ProtocolMessage) -> ProtocolMessage:
         command = msg.command
         if command == "PING":
             return ProtocolMessage("PONG")
@@ -55,3 +57,7 @@ class NetworkServer:
             return ProtocolMessage("BYE", "Connection closed")
         else:
             return ProtocolMessage("ERROR", f"Unknown command '{command}'")
+
+if __name__ == "__main__":
+    server = NetworkServer(host="127.0.0.1", port=8000)
+    server.start()
