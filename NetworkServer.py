@@ -1,6 +1,6 @@
 import socket
 from datetime import datetime
-import Protocol
+from Protocol import Protocol
 import ProtocolError
 import ProtocolMessage
 

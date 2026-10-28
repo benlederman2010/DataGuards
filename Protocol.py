@@ -1,7 +1,7 @@
 import socket
 import ProtocolMessage
 from typing import Literal
-import ProtocolError
+from ProtocolError import ProtocolError
 
 class Protocol:
     HEADER_SIZE = 4
