@@ -1,5 +1,6 @@
 import socket
-
+import Protocol
+import ProtocolMessage
 
 class NetworkClient:
     def __init__(self):
@@ -12,10 +13,13 @@ class NetworkClient:
         user_message = input("Enter your message: ")
 
         while user_message != "Exit":
-            self.client_socket.send(user_message.encode())
+            user_message = ProtocolMessage.from_user_input(user_message)
 
-            reply = self.client_socket.recv(1024)
-            print(reply.decode())
+            Protocol.send(self.client_socket, user_message)
+
+            reply = protocol.receive(self.client_socket)
+            if reply is not None:
+                print(reply)
 
             user_message = input("Enter your message: ")
 
