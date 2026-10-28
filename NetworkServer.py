@@ -39,13 +39,19 @@ class NetworkServer:
         except ProtocolError as e:
             error_msg = ProtocolMessage("ERROR", f"Protocol error: {e}")
             Protocol.send(client_socket, error_msg)
+        finally:
+            client_socket.close()
 
-
-
-
-
-
-
-
-    def __process(self):
-        pass
+    def __process(self, msg: ProtocolMessage) -> ProtocolMessage:
+        command = msg.command
+        if command == "PING":
+            return ProtocolMessage("PONG")
+        elif command == "ECHO":
+            return ProtocolMessage("ECHO", msg.data)
+        elif command == "TIME":
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            return ProtocolMessage("TIME", current_time)
+        elif command == "EXIT":
+            return ProtocolMessage("BYE", "Connection closed")
+        else:
+            return ProtocolMessage("ERROR", f"Unknown command '{command}'")
