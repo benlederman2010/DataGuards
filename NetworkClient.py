@@ -25,3 +25,7 @@ class NetworkClient:
 
         print("Client said bye")
         self.client_socket.close()
+
+if __name__ == "__main__":
+    client = NetworkClient()
+    client.run()
