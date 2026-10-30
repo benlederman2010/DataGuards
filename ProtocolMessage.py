@@ -1,5 +1,4 @@
-class ProtocolError(Exception):
-    pass
+from ProtocolError import ProtocolError
 
 class ProtocolMessage:
     SEPARATOR = "|"
