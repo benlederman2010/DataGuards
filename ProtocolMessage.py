@@ -60,4 +60,4 @@ class ProtocolMessage:
         return f"ProtocolMessage(command={self.__command!r}, data={self.__data!r})"
 
     def __str__(self) -> str:
-        return f"[{self.__command}] {self.__data}"
+        return f"[{self.__command}]{ProtocolMessage.SEPARATOR} {self.__data}"

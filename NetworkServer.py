@@ -47,7 +47,7 @@ class NetworkServer:
     def __process(msg: ProtocolMessage) -> ProtocolMessage:
         command = msg.command
         if command == "PING":
-            return ProtocolMessage("PONG")
+            return ProtocolMessage("PING","PONG")
         elif command == "ECHO":
             return ProtocolMessage("ECHO", msg.data)
         elif command == "TIME":

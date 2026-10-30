@@ -1,5 +1,5 @@
 import socket
-import ProtocolMessage
+from ProtocolMessage import ProtocolMessage
 from typing import Literal
 from ProtocolError import ProtocolError
 
