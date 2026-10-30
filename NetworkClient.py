@@ -4,8 +4,8 @@
 """
 
 import socket
-import Protocol
-import ProtocolMessage
+from Protocol import Protocol
+from ProtocolMessage import ProtocolMessage
 
 
 class NetworkClient:
@@ -20,7 +20,7 @@ class NetworkClient:
         מאתחלת את כתובת השרת, יוצרת סוקט מסוג TCP, ויוצרת את החיבור ההתחלתי.
         """
         self.host = "127.0.0.1"  # כתובת ה-IP של השרת (Localhost)
-        self.port = 5000  # הפורט שעליו השרת מאזין
+        self.port = 8000  # הפורט שעליו השרת מאזין
         self.client_socket = socket.socket()
 
         # יצירת חיבור ישיר לשרת בעת יצירת האובייקט
