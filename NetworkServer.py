@@ -1,8 +1,8 @@
 import socket
 from datetime import datetime
 from Protocol import Protocol
-import ProtocolError
-import ProtocolMessage
+from ProtocolError import ProtocolError
+from ProtocolMessage import ProtocolMessage
 
 class NetworkServer:
     def __init__(self,host = "127.0.0.1",port = 8000):
@@ -26,7 +26,7 @@ class NetworkServer:
     def __handle_client(self,client_socket,client_address):
         try:
             while True:
-                msg = Protocol.recive(client_socket,client_address)
+                msg = Protocol.receive(client_socket)
                 print(f"Received from {client_address}: {msg}")
 
                 response = self.__process(msg)
