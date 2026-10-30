@@ -27,7 +27,8 @@ class NetworkClient:
         try:
             self.client_socket.connect((self.host, self.port))
         except Exception as e:
-            print(f"Error connecting to server")
+            print(f"Error: Could not connect to server at {self.host}:{self.port}.")
+            print("Make sure the server is running and try again.")
 
     def run(self):
         """
