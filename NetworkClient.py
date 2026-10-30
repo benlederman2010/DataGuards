@@ -24,7 +24,10 @@ class NetworkClient:
         self.client_socket = socket.socket()
 
         # יצירת חיבור ישיר לשרת בעת יצירת האובייקט
-        self.client_socket.connect((self.host, self.port))
+        try:
+            self.client_socket.connect((self.host, self.port))
+        except Exception as e:
+            print(f"Error connecting to server")
 
     def run(self):
         """
