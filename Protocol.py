@@ -1,3 +1,4 @@
+from __future__ import annotations
 import socket
 from ProtocolMessage import ProtocolMessage
 from typing import Literal
