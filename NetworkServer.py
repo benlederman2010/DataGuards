@@ -23,10 +23,16 @@ class NetworkServer:
             self.__handle_client(client_socket,client_address)
             self.__server_socket.close()
 
-    def __handle_client(self,client_socket,client_address):
+    def __handle_client(self, client_socket, client_address):
         try:
             while True:
                 msg = Protocol.receive(client_socket)
+
+                # אם הלקוח סגר את החיבור (התקבל None), יוצאים מהלולאה מסודר
+                if msg is None:
+                    print(f"Client {client_address} disconnected.")
+                    break
+
                 print(f"Received from {client_address}: {msg}")
 
                 response = self.__process(msg)
@@ -41,7 +47,7 @@ class NetworkServer:
             Protocol.send(client_socket, error_msg)
         finally:
             client_socket.close()
-            print("Server shutdown.")
+            print("Server closed client connection.")
 
     @staticmethod
     def __process(msg: ProtocolMessage) -> ProtocolMessage:
