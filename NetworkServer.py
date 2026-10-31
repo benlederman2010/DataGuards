@@ -49,6 +49,13 @@ class NetworkServer:
             client_socket.close()
             print("Server closed client connection.")
 
+        except ProtocolError as e:
+            error_msg = ProtocolMessage("ERROR", f"Protocol error: {e}")
+            Protocol.send(client_socket, error_msg)
+        finally:
+            client_socket.close()
+            print("Server closed client connection.")
+
     @staticmethod
     def __process(msg: ProtocolMessage) -> ProtocolMessage:
         command = msg.command
