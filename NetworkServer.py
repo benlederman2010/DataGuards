@@ -28,7 +28,6 @@ class NetworkServer:
             while True:
                 msg = Protocol.receive(client_socket)
 
-                # אם הלקוח סגר את החיבור (התקבל None), יוצאים מהלולאה מסודר
                 if msg is None:
                     print(f"Client {client_address} disconnected.")
                     break
@@ -41,13 +40,6 @@ class NetworkServer:
                 if msg.command == "EXIT":
                     print(f"Client {client_address} requested exit.")
                     break
-
-        except ProtocolError as e:
-            error_msg = ProtocolMessage("ERROR", f"Protocol error: {e}")
-            Protocol.send(client_socket, error_msg)
-        finally:
-            client_socket.close()
-            print("Server closed client connection.")
 
         except ProtocolError as e:
             error_msg = ProtocolMessage("ERROR", f"Protocol error: {e}")
