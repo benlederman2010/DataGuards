@@ -4,13 +4,20 @@ from typing import Literal
 from ProtocolError import ProtocolError
 
 class Protocol:
-    HEADER_SIZE = 4
+    """
+    שליחה וקבלה של הודעות דרך סוקט.
+    לפני כל הודעה נשלחת כותרת של 4 בתים עם האורך שלה, כי TCP הוא זרם בתים
+    ולא שומר על גבולות בין הודעות.
+    """
+
+    HEADER_SIZE = 4  # גודל כותרת האורך בבתים
     BYTE_ORDER: Literal["little","big"] = "big"
-    MAX_LENGTH = 2 ** 32 - 1
+    MAX_LENGTH = 2 ** 32 - 1  # האורך הגדול ביותר ש-4 בתים יכולים להכיל
     COMMANDS = ["TIME", "ECHO", "PING", "EXIT"]
 
     @staticmethod
     def send(sock: socket.socket, message: ProtocolMessage) -> None:
+        """שולח הודעה עם כותרת אורך. אם ההודעה ארוכה מדי, זורק ProtocolError."""
         msg_bytes = message.to_bytes()
         msg_length = len(msg_bytes)
 
@@ -23,6 +30,7 @@ class Protocol:
 
     @staticmethod
     def receive(sock: socket.socket) -> ProtocolMessage | None:
+        """קורא הודעה שלמה מהסוקט. אם הצד השני התנתק, מחזיר None."""
         # קריאת כותרת האורך
         length_bytes = Protocol.__recv_exact(sock, Protocol.HEADER_SIZE)
         if not length_bytes:
@@ -39,6 +47,10 @@ class Protocol:
 
     @staticmethod
     def __recv_exact(sock: socket.socket, n: int) -> bytes | None:
+        """
+        קורא בדיוק n בתים מהסוקט. recv יכול להחזיר פחות ממה שביקשנו,
+        אז קוראים שוב עד שמגיעים ל-n. אם החיבור נסגר באמצע, מחזיר None.
+        """
         data = bytearray()
         while len(data) < n:
             try:

@@ -1,155 +1,133 @@
+"""
+שלב ד - בדיקות חובה (pytest)
+כל בדיקה מתאימה לשורה בטבלת ההוראות.
+"""
+
+import socket
 import threading
 import time
-import socket
-import pytest
 from datetime import datetime
 
+import pytest
+
+import NetworkClient as network_client_module
+from NetworkServer import NetworkServer
 from Protocol import Protocol
 from ProtocolMessage import ProtocolMessage
-from NetworkServer import NetworkServer
 
 HOST = "127.0.0.1"
-PORT = 8005
 
 
-@pytest.fixture(scope="module", autouse=True)
-def run_server():
-    """פתיחת השרת ברקע לפני הרצת הבדיקות"""
+def _free_port() -> int:
+    with socket.socket() as s:
+        s.bind((HOST, 0))
+        return s.getsockname()[1]
 
-    def server_thread_func():
-        server = NetworkServer(host=HOST, port=PORT)
-        server.start()
 
-    thread = threading.Thread(target=server_thread_func, daemon=True)
+def _connect(port: int, retries: int = 50) -> socket.socket:
+    for _ in range(retries):
+        try:
+            sock = socket.socket()
+            sock.settimeout(3)
+            sock.connect((HOST, port))
+            return sock
+        except ConnectionRefusedError:
+            sock.close()
+            time.sleep(0.05)
+    raise RuntimeError("server did not start")
+
+
+@pytest.fixture
+def client():
+    """מפעיל שרת ב-thread נפרד ומחזיר סוקט מחובר אליו."""
+    port = _free_port()
+    server = NetworkServer(HOST, port)
+    thread = threading.Thread(target=server.start, daemon=True)
     thread.start()
-    time.sleep(0.2)  # המתנה קצרה לעליית השרת
-    yield
-
-
-def get_client_socket():
-    """פונקציית עזר ליצירת חיבור לקוח"""
-    sock = socket.socket()
-    sock.connect((HOST, PORT))
-    return sock
-
-
-# --- בדיקה 1: PING ---
-def test_ping():
-    sock = get_client_socket()
-    Protocol.send(sock, ProtocolMessage("PING"))
-    response = Protocol.receive(sock)
-    sock.close()
-
-    assert response is not None
-    assert response.command == "PING"
-    assert response.data == "PONG"
-
-
-# --- בדיקה 2: ECHO עם טקסט בעברית ---
-def test_echo_hebrew():
-    sock = get_client_socket()
-    hebrew_text = "שלום עולם! בדיקה בעברית"
-    Protocol.send(sock, ProtocolMessage("ECHO", hebrew_text))
-    response = Protocol.receive(sock)
-    sock.close()
-
-    assert response is not None
-    assert response.command == "ECHO"
-    assert response.data == hebrew_text
-
-
-# --- בדיקה 3: TIME ---
-def test_time():
-    sock = get_client_socket()
-    Protocol.send(sock, ProtocolMessage("TIME"))
-    response = Protocol.receive(sock)
-    sock.close()
-
-    assert response is not None
-    assert response.command == "TIME"
-
-    # וידוא שהזמן בפורמט תקין
-    valid_time = True
-    try:
-        datetime.strptime(response.data, "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        valid_time = False
-
-    assert valid_time, "הזמן שהוחזר אינו בפורמט תקין"
-
-
-# --- בדיקה 4: פקודה לא מוכרת ---
-def test_unknown_command():
-    sock = get_client_socket()
-    Protocol.send(sock, ProtocolMessage("INVALID_CMD", "test"))
-    response = Protocol.receive(sock)
-    sock.close()
-
-    assert response is not None
-    assert response.command == "ERROR"
-
-
-# --- בדיקה 5: EXIT ---
-def test_exit():
-    sock = get_client_socket()
-    Protocol.send(sock, ProtocolMessage("EXIT"))
-    response = Protocol.receive(sock)
-
-    assert response is not None
-    assert response.command == "BYE"
-
-    # בדיקה שהחיבור אכן נסגר מהצד של השרת
-    after_exit = Protocol.receive(sock)
-    assert after_exit is None
+    sock = _connect(port)
+    yield sock
     sock.close()
 
 
-# --- בדיקה 6: חיבור כשהשרת כבוי ---
-def test_connect_when_server_off():
-    unused_port = 9999  # פורט שאין עליו שרת פעיל
-    with pytest.raises(ConnectionRefusedError):
-        sock = socket.socket()
-        sock.connect((HOST, unused_port))
-        sock.close()
+def _ask(sock, text):
+    Protocol.send(sock, ProtocolMessage.from_user_input(text))
+    return Protocol.receive(sock)
 
 
-# --- בדיקה 7: שתי בקשות רצופות ---
-def test_consecutive_requests():
-    sock = get_client_socket()
-
-    # בקשה ראשונה
-    Protocol.send(sock, ProtocolMessage("PING"))
-    resp1 = Protocol.receive(sock)
-    assert resp1.data == "PONG"
-
-    # בקשה שנייה
-    Protocol.send(sock, ProtocolMessage("ECHO", "test2"))
-    resp2 = Protocol.receive(sock)
-    assert resp2.data == "test2"
-
-    sock.close()
+# 1. PING -> PONG
+def test_ping_returns_pong(client):
+    reply = _ask(client, "PING")
+    assert reply.command == "PING"
+    assert reply.data == "PONG"
 
 
-# --- בדיקה 8: הודעה מפוצלת לפי מקטעי TCP ---
-def test_chunked_tcp_message():
-    sock = get_client_socket()
-    msg = ProtocolMessage("ECHO", "SplitTCPPayloadData")
-    msg_bytes = msg.to_bytes()
+# 2. ECHO עם טקסט בעברית -> החזרת הטקסט במדויק
+def test_echo_hebrew_text_returned_exactly(client):
+    text = "שלום עולם! בדיקה 123"
+    reply = _ask(client, f"ECHO {text}")
+    assert reply.command == "ECHO"
+    assert reply.data == text
 
-    length_bytes = len(msg_bytes).to_bytes(Protocol.HEADER_SIZE, Protocol.BYTE_ORDER)
-    full_packet = length_bytes + msg_bytes
 
-    # פיצול החבילה לשני חלקים ושליחתם בנפרד
-    part1 = full_packet[:3]
-    part2 = full_packet[3:]
+# 3. TIME -> שעה תקפה מהשרת
+def test_time_returns_valid_server_time(client):
+    reply = _ask(client, "TIME")
+    assert reply.command == "TIME"
+    server_time = datetime.strptime(reply.data, "%Y-%m-%d %H:%M:%S")
+    assert abs((datetime.now() - server_time).total_seconds()) < 5
 
-    sock.sendall(part1)
-    time.sleep(0.1)  # השהייה קצרה להפרדה ברשת
-    sock.sendall(part2)
 
-    response = Protocol.receive(sock)
-    sock.close()
+# 4. פקודה לא מוכרת -> תגובת שגיאה
+def test_unknown_command_returns_error(client):
+    reply = _ask(client, "BLABLA something")
+    assert reply.command == "ERROR"
+    assert "BLABLA" in reply.data
 
-    assert response is not None
-    assert response.command == "ECHO"
-    assert response.data == "SplitTCPPayloadData"
+
+# 5. EXIT -> תגובה וסגירת חיבור
+def test_exit_replies_and_closes_connection(client):
+    reply = _ask(client, "EXIT")
+    assert reply.command == "BYE"
+    # השרת סגר את החיבור: קריאה נוספת מחזירה None
+    assert Protocol.receive(client) is None
+
+
+# 6. חיבור כשהשרת כבוי -> טיפול בשגיאה ללא קריסה לא מבוקרת
+def test_connect_when_server_down_handled_gracefully(monkeypatch, capsys):
+    class RefusingSocket:
+        def connect(self, addr):
+            raise ConnectionRefusedError()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(network_client_module.socket, "socket", RefusingSocket)
+
+    # הלקוח מדפיס הודעה ויוצא מסודר (exit) - לא חריגה גולמית
+    with pytest.raises(SystemExit):
+        network_client_module.NetworkClient()
+    assert "Could not connect" in capsys.readouterr().out
+
+
+# 7. שתי בקשות רצופות -> שתי תשובות תקינות
+def test_two_consecutive_requests(client):
+    first = _ask(client, "PING")
+    second = _ask(client, "ECHO hello")
+    assert (first.command, first.data) == ("PING", "PONG")
+    assert (second.command, second.data) == ("ECHO", "hello")
+
+
+# 8. הודעה מפוצלת למקטעי TCP -> פענוח הודעה אחת מלאה
+def test_message_split_into_tcp_segments(client):
+    msg = ProtocolMessage("ECHO", "הודעה מפוצלת")
+    body = msg.to_bytes()
+    raw = len(body).to_bytes(Protocol.HEADER_SIZE, Protocol.BYTE_ORDER) + body
+
+    # פיצול לבתים בודדים, כולל באמצע הכותרת ובאמצע תו בעברית (UTF-8)
+    for i in range(len(raw)):
+        client.sendall(raw[i:i + 1])
+        time.sleep(0.01)
+
+    reply = Protocol.receive(client)
+    assert reply.command == "ECHO"
+    assert reply.data == "הודעה מפוצלת"
