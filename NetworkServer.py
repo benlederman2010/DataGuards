@@ -1,3 +1,5 @@
+"""השרת: מקבל לקוח, קורא ממנו פקודות לפי הפרוטוקול ועונה להן."""
+
 import socket
 from datetime import datetime
 from Protocol import Protocol
@@ -5,12 +7,16 @@ from ProtocolError import ProtocolError
 from ProtocolMessage import ProtocolMessage
 
 class NetworkServer:
+    """שרת TCP שעונה לפקודות PING, ECHO, TIME ו-EXIT. בשלב הזה הוא מטפל בלקוח אחד."""
+
     def __init__(self,host = "127.0.0.1",port = 8000):
+        """שומר את הכתובת והפורט. הסוקט עצמו נוצר רק ב-start."""
         self.__host = host
         self.__port = port
         self.__server_socket = None
 
     def start(self):
+        """פותח סוקט, מאזין לחיבורים ומעביר את הלקוח שהתחבר לטיפול."""
 
         self.__server_socket = socket.socket()
         self.__server_socket.bind((self.__host, self.__port))
@@ -23,16 +29,14 @@ class NetworkServer:
             self.__handle_client(client_socket,client_address)
             self.__server_socket.close()
 
-    def __handle_client(self, client_socket, client_address):
+    def __handle_client(self,client_socket,client_address):
+        """
+        מטפל בלקוח אחד: קורא בקשה, שולח תשובה וחוזר על זה עד שמגיעה הפקודה EXIT.
+        אם ההודעה לא בפורמט הפרוטוקול, שולח ללקוח ERROR. בסוף סוגר את הסוקט של הלקוח.
+        """
         try:
             while True:
                 msg = Protocol.receive(client_socket)
-
-                # אם הלקוח סגר את החיבור (התקבל None), יוצאים מהלולאה מסודר
-                if msg is None:
-                    print(f"Client {client_address} disconnected.")
-                    break
-
                 print(f"Received from {client_address}: {msg}")
 
                 response = self.__process(msg)
@@ -47,10 +51,11 @@ class NetworkServer:
             Protocol.send(client_socket, error_msg)
         finally:
             client_socket.close()
-            print("Server closed client connection.")
+            print("Server shutdown.")
 
     @staticmethod
     def __process(msg: ProtocolMessage) -> ProtocolMessage:
+        """מקבל בקשה ומחזיר את התשובה שלה. פקודה לא מוכרת מקבלת ERROR."""
         command = msg.command
         if command == "PING":
             return ProtocolMessage("PING","PONG")
