@@ -8,7 +8,7 @@ class Protocol:
     HEADER_SIZE = 4
     BYTE_ORDER: Literal["little","big"] = "big"
     MAX_LENGTH = 2 ** 32 - 1
-    COMMANDS = ["TIME", "ECHO", "PING", "EXIT"]
+    COMMANDS = ["TIME", "ECHO", "PING", "EXIT","CLIENTS"]
 
     @staticmethod
     def send(sock: socket.socket, message: ProtocolMessage) -> None:
