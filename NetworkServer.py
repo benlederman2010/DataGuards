@@ -1,68 +1,71 @@
 import socket
-from datetime import datetime
-from Protocol import Protocol
-from ProtocolError import ProtocolError
-from ProtocolMessage import ProtocolMessage
+from threading import Lock
+from ClientHandler import ClientHandler
+
 
 class NetworkServer:
-    def __init__(self,host = "127.0.0.1",port = 8000):
-        self.__host = host
+    def __init__(self, ip="127.0.0.1", port=8000):
+        self.__ip = ip
         self.__port = port
-        self.__server_socket = None
+        self.__server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.__server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.__handlers: list[ClientHandler] = []
+        self.__lock = Lock()
+        self.__running = False
 
     def start(self):
+        self.__server.bind((self.__ip, self.__port))
+        self.__server.listen(5)
+        self.__running = True
+        print(f"SERVER Listening on {self.__ip}:{self.__port}...")
 
-        self.__server_socket = socket.socket()
-        self.__server_socket.bind((self.__host, self.__port))
-        self.__server_socket.listen(1)
-        print(f"SERVER Listening on {self.__host}:{self.__port}...")
-
-        while True:
-            client_socket, client_address = self.__server_socket.accept()
-            print(f"SERVER Client connected from {client_address}")
-            self.__handle_client(client_socket,client_address)
-            self.__server_socket.close()
-
-    def __handle_client(self, client_socket, client_address):
         try:
-            while True:
-                msg = Protocol.receive(client_socket)
-
-                if msg is None:
-                    print(f"Client {client_address} disconnected.")
+            while self.__running:
+                try:
+                    client_socket, client_address = self.__server.accept()
+                except OSError:
                     break
 
-                print(f"Received from {client_address}: {msg}")
-
-                response = self.__process(msg)
-                Protocol.send(client_socket, response)
-
-                if msg.command == "EXIT":
-                    print(f"Client {client_address} requested exit.")
-                    break
-
-        except ProtocolError as e:
-            error_msg = ProtocolMessage("ERROR", f"Protocol error: {e}")
-            Protocol.send(client_socket, error_msg)
+                print(f"SERVER Client connected from {client_address}")
+                handler = ClientHandler(client_socket, client_address, self)
+                with self.__lock:
+                    self.__handlers.append(handler)
+                handler.start()
+        except KeyboardInterrupt:
+            print("\nSERVER Stopping...")
         finally:
-            client_socket.close()
-            print("Server closed client connection.")
+            self.__shutdown()
 
-    @staticmethod
-    def __process(msg: ProtocolMessage) -> ProtocolMessage:
-        command = msg.command
-        if command == "PING":
-            return ProtocolMessage("PONG")
-        elif command == "ECHO":
-            return ProtocolMessage("ECHO", msg.data)
-        elif command == "TIME":
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            return ProtocolMessage("TIME", current_time)
-        elif command == "EXIT":
-            return ProtocolMessage("BYE", "Connection closed")
-        else:
-            return ProtocolMessage("ERROR", f"Unknown command '{command}'")
+    def remove_handler(self, handler: ClientHandler):
+        with self.__lock:
+            if handler in self.__handlers:
+                self.__handlers.remove(handler)
+
+    def client_count(self) -> int:
+        with self.__lock:
+            return len(self.__handlers)
+
+    def __shutdown(self):
+        self.__running = False
+        try:
+            self.__server.close()
+        except OSError:
+            pass
+
+        with self.__lock:
+            handlers_copy = list(self.__handlers)
+
+        for handler in handlers_copy:
+            handler.stop()
+
+        for handler in handlers_copy:
+            handler.join(timeout=1.0)
+
+        with self.__lock:
+            self.__handlers.clear()
+        print("SERVER Shutdown complete.")
+
 
 if __name__ == "__main__":
-    server = NetworkServer(host="127.0.0.1", port=8000)
+    server = NetworkServer(ip="127.0.0.1", port=8000)
     server.start()
