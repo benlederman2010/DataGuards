@@ -63,7 +63,7 @@ class NetworkServer:
 
 
 if __name__ == "__main__":
-    server = NetworkServer(host="127.0.0.1", port=8000)
+    server = NetworkServer(host = "127.0.0.1", port=8000)
     try:
         server.start()
     except KeyboardInterrupt:
