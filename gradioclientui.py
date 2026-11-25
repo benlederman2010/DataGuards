@@ -73,7 +73,7 @@ class GradioClientUI:
                 "Send",
                 interactive=False
             )
-
+            # bug correction
             chat_history = gr.Chatbot(
                 label="Requests and replies"
             )
