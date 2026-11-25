@@ -41,8 +41,8 @@ def test_ping():
     sock.close()
 
     assert response is not None
-    assert response.command == "PING"
-    assert response.data == "PONG"
+    assert response.command == "PONG"
+    assert response.data == ""
 
 
 # --- בדיקה 2: ECHO עם טקסט בעברית ---
@@ -120,7 +120,7 @@ def test_consecutive_requests():
     # בקשה ראשונה
     Protocol.send(sock, ProtocolMessage("PING"))
     resp1 = Protocol.receive(sock)
-    assert resp1.data == "PONG"
+    assert resp1.command == "PONG"
 
     # בקשה שנייה
     Protocol.send(sock, ProtocolMessage("ECHO", "test2"))
@@ -153,3 +153,27 @@ def test_chunked_tcp_message():
     assert response is not None
     assert response.command == "ECHO"
     assert response.data == "SplitTCPPayloadData"
+
+# --- בדיקה 9: ריבוי לקוחות במקביל ופקודת CLIENTS ---
+def test_multiple_clients_and_clients_command():
+    sock1 = get_client_socket()
+    sock2 = get_client_socket()
+    time.sleep(0.05)  # המתנה קצרה לרישום שני הלקוחות בשרת
+
+    Protocol.send(sock1, ProtocolMessage("CLIENTS"))
+    resp = Protocol.receive(sock1)
+    assert resp is not None
+    assert resp.command == "CLIENTS"
+    assert int(resp.data) >= 2
+
+    # שליחה במקביל משני הלקוחות
+    Protocol.send(sock1, ProtocolMessage("ECHO", "from_client_1"))
+    Protocol.send(sock2, ProtocolMessage("ECHO", "from_client_2"))
+
+    r1 = Protocol.receive(sock1)
+    r2 = Protocol.receive(sock2)
+    assert r1.data == "from_client_1"
+    assert r2.data == "from_client_2"
+
+    sock1.close()
+    sock2.close()

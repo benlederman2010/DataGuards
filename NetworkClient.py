@@ -4,10 +4,10 @@
 """
 
 import threading
-from threading import Lock
 import socket
-import Protocol
-import ProtocolMessage
+from Protocol import Protocol
+from ProtocolMessage import ProtocolMessage
+from ProtocolError import ProtocolError
 
 
 class NetworkClient:
@@ -96,7 +96,7 @@ class NetworkClient:
             user_message = input("Enter your message: ")
 
             # המשך תקשורת כל עוד המשתמש לא ביקש לצאת
-            while user_message != "Exit" and self.__connected:
+            while user_message.upper() != "Exit" and self.__connected:
                 # 1. המרת הטקסט הגולמי לאובייקט ProtocolMessage תקני
                 user_message = ProtocolMessage.from_user_input(user_message)
 
@@ -106,6 +106,8 @@ class NetworkClient:
                 # 4. וידוא שהתשובה תקינה (לא שגיאה או ניתוק) והדפסתה
                 if reply is not None:
                     print(reply)
+                    if reply.command == "BYE":
+                        break
 
                 # קבלת קלט חדש עבור האיטרציה הבאה
                 user_message = input("Enter your message: ")

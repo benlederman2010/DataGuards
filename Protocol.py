@@ -1,5 +1,5 @@
 import socket
-import ProtocolMessage
+from ProtocolMessage import ProtocolMessage
 from typing import Literal
 from ProtocolError import ProtocolError
 
@@ -22,7 +22,7 @@ class Protocol:
         sock.sendall(length_bytes + msg_bytes)
 
     @staticmethod
-    def receive(sock: socket.socket) -> ProtocolMessage | None:
+    def receive(sock: socket.socket) -> ProtocolMessage:
         # קריאת כותרת האורך
         length_bytes = Protocol.__recv_exact(sock, Protocol.HEADER_SIZE)
         if not length_bytes:

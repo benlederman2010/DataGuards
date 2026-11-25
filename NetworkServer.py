@@ -1,68 +1,70 @@
 import socket
-from datetime import datetime
-from Protocol import Protocol
-from ProtocolError import ProtocolError
-from ProtocolMessage import ProtocolMessage
+import threading
+from ClientHandler import ClientHandler
+
 
 class NetworkServer:
-    def __init__(self,host = "127.0.0.1",port = 8000):
+    def __init__(self, host="127.0.0.1", port=8000):
         self.__host = host
         self.__port = port
         self.__server_socket = None
+        self.__clients = []
+        self.__lock = threading.Lock()
+        self.__running = False
 
     def start(self):
-
-        self.__server_socket = socket.socket()
+        self.__server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.__server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.__server_socket.bind((self.__host, self.__port))
-        self.__server_socket.listen(1)
+        self.__server_socket.listen()
+        self.__running = True
         print(f"SERVER Listening on {self.__host}:{self.__port}...")
 
-        while True:
-            client_socket, client_address = self.__server_socket.accept()
-            print(f"SERVER Client connected from {client_address}")
-            self.__handle_client(client_socket,client_address)
-            self.__server_socket.close()
-
-    def __handle_client(self, client_socket, client_address):
         try:
-            while True:
-                msg = Protocol.receive(client_socket)
-
-                if msg is None:
-                    print(f"Client {client_address} disconnected.")
+            while self.__running:
+                try:
+                    client_socket, client_address = self.__server_socket.accept()
+                except OSError:
                     break
 
-                print(f"Received from {client_address}: {msg}")
-
-                response = self.__process(msg)
-                Protocol.send(client_socket, response)
-
-                if msg.command == "EXIT":
-                    print(f"Client {client_address} requested exit.")
-                    break
-
-        except ProtocolError as e:
-            error_msg = ProtocolMessage("ERROR", f"Protocol error: {e}")
-            Protocol.send(client_socket, error_msg)
+                print(f"SERVER Client connected from {client_address}")
+                handler = ClientHandler(client_socket, client_address, self)
+                with self.__lock:
+                    self.__clients.append(handler)
+                handler.start()
         finally:
-            client_socket.close()
-            print("Server closed client connection.")
+            self.stop()
 
-    @staticmethod
-    def __process(msg: ProtocolMessage) -> ProtocolMessage:
-        command = msg.command
-        if command == "PING":
-            return ProtocolMessage("PONG")
-        elif command == "ECHO":
-            return ProtocolMessage("ECHO", msg.data)
-        elif command == "TIME":
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            return ProtocolMessage("TIME", current_time)
-        elif command == "EXIT":
-            return ProtocolMessage("BYE", "Connection closed")
-        else:
-            return ProtocolMessage("ERROR", f"Unknown command '{command}'")
+    def remove_client(self, handler):
+        with self.__lock:
+            if handler in self.__clients:
+                self.__clients.remove(handler)
+
+    def client_count(self) -> int:
+        with self.__lock:
+            return len(self.__clients)
+
+    def stop(self):
+        self.__running = False
+        with self.__lock:
+            active_clients = list(self.__clients)
+            self.__clients.clear()
+
+        for handler in active_clients:
+            handler.stop()
+
+        if self.__server_socket:
+            try:
+                self.__server_socket.close()
+            except OSError:
+                pass
+            self.__server_socket = None
+        print("SERVER stopped.")
+
 
 if __name__ == "__main__":
     server = NetworkServer(host="127.0.0.1", port=8000)
-    server.start()
+    try:
+        server.start()
+    except KeyboardInterrupt:
+        server.stop()
