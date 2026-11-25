@@ -75,8 +75,7 @@ class GradioClientUI:
             )
 
             chat_history = gr.Chatbot(
-                label="Requests and replies",
-                type="messages"
+                label="Requests and replies"
             )
 
             clear_button = gr.Button("Clear log")
