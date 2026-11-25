@@ -23,22 +23,21 @@ class Protocol:
         sock.sendall(length_bytes + msg_bytes)
 
     @staticmethod
-    def receive(sock: socket.socket) -> ProtocolMessage:
-        # קריאת כותרת האורך
+    def receive(sock: socket.socket) -> ProtocolMessage | None:
         length_bytes = Protocol.__recv_exact(sock, Protocol.HEADER_SIZE)
         if not length_bytes:
             return None
 
         msg_length = int.from_bytes(length_bytes, Protocol.BYTE_ORDER)
 
-        msg_bytes = Protocol._recv_exact(sock, msg_length)
+        msg_bytes = Protocol.__recv_exact(sock, msg_length)
         if not msg_bytes:
             return None
 
         return ProtocolMessage.from_bytes(msg_bytes)
 
     @staticmethod
-    def _recv_exact(sock: socket.socket, n: int) -> bytes | None:
+    def __recv_exact(sock: socket.socket, n: int) -> bytes | None:
         data = bytearray()
         while len(data) < n:
             try:
