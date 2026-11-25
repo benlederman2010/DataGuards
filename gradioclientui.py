@@ -9,7 +9,7 @@ from ProtocolError import ProtocolError
 
 
 class GradioClientUI:
-
+    COMMANDS_WITH_DATA = ["ECHO"]
     def __init__(self, ip="127.0.0.1", port=8000):
         self.__default_ip = ip
         self.__default_port = port
@@ -76,7 +76,8 @@ class GradioClientUI:
             )
 
             chat_history = gr.Chatbot(
-                label="Requests and replies"
+                label="Requests and replies",
+                type="messages"
             )
 
             clear_button = gr.Button("Clear log")
@@ -238,7 +239,7 @@ class GradioClientUI:
         data_update = gr.update(
             interactive=(
                 connected
-                and command in Protocol.COMMANDS_WITH_DATA
+                and command in self.COMMANDS_WITH_DATA
             )
         )
 
@@ -296,7 +297,7 @@ class GradioClientUI:
             value="",
             interactive=(
                 connected
-                and command in Protocol.COMMANDS_WITH_DATA
+                and command in self.COMMANDS_WITH_DATA
             )
         )
 
