@@ -23,8 +23,9 @@ class Protocol:
         sock.sendall(length_bytes + msg_bytes)
 
     @staticmethod
-    def receive(sock: socket.socket) -> ProtocolMessage | None:
-        length_bytes = Protocol._recv_exact(sock, Protocol.HEADER_SIZE)
+    def receive(sock: socket.socket) -> ProtocolMessage:
+        # קריאת כותרת האורך
+        length_bytes = Protocol.__recv_exact(sock, Protocol.HEADER_SIZE)
         if not length_bytes:
             return None
 

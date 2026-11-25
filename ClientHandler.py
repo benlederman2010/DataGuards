@@ -8,7 +8,7 @@ from datetime import datetime
 
 class ClientHandler(threading.Thread):
     def __init__(self, client_socket, client_address, server):
-        super().__init__(daemon=True)
+        super().__init__()
         self.__sock = client_socket
         self.__address = client_address
         self.__server = server
